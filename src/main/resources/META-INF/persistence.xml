@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.0" xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
+            
+    
+    <!--  Define Persistence Unit  -->
+            
+    
+    <persistence-unit name="gestionale_questionario">
+                        
+        
+        <class>Entity.Questionario</class>
+                        
+        
+        <class>Entity.Utente</class>
+                        
+        
+        <class>Entity.Domanda</class>
+                        
+        
+        <class>Entity.Utente_questionario</class>
+                        
+        
+        <class>Entity.Pagina</class>
+                        
+        
+        <class>Entity.Categoria</class>
+                        
+        
+        <class>Entity.SottoCategoria</class>
+                        
+        
+        <class>Entity.Digicomp</class>
+                        
+        
+        <class>Entity.DigicompDomande</class>
+                        
+        
+        <class>Entity.DigicompDomanda</class>
+                        
+        
+        <class>Entity.Competenza</class>
+                        
+        
+        <class>Entity.AreeCompetenze</class>
+                        
+        
+        <class>Entity.Risposta</class>
+                        
+        
+        <properties>
+                                    
+            
+            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+                                        
+            
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/gestionale_questionario"/>
+                        
+            
+            <!--  <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://db.smartnova.it:3306/gestionale_questionario"/>-->
+                                    
+            
+            <property name="jakarta.persistence.jdbc.user" value="gestionale_questionario"/>
+                                    
+            
+            <property name="jakarta.persistence.jdbc.password" value="gestionale_questionario"/>
+                                    
+            
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+                                    
+            
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+                                    
+            
+            <property name="hibernate.show_sql" value="false"/>
+                                    
+            
+            <property name="hibernate.format_sql" value="false"/>
+                                    
+            
+            <property name="hibernate.use_sql_comments" value="false"/>
+                                
+        
+        </properties>
+                    
+    
+    </persistence-unit>
+        
+
+</persistence>
