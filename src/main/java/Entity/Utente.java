@@ -4,6 +4,7 @@
  */
 package Entity;
 
+import Enum.Disponibilità_utente;
 import Enum.Stato_utente;
 import jakarta.persistence.Table;
 import java.io.Serializable;
@@ -48,6 +49,9 @@ public class Utente implements Serializable {
 
     @Enumerated(EnumType.STRING)
     private Stato_utente stato_utente;
+
+    @Enumerated(EnumType.STRING)
+    private Disponibilità_utente disponibilità_utente;
 
     @ManyToOne
     private Ruolo ruolo;
@@ -151,6 +155,14 @@ public class Utente implements Serializable {
 
     public void setStato_utente(Stato_utente stato_utente) {
         this.stato_utente = stato_utente;
+    }
+
+    public Disponibilità_utente getDisponibilità_utente() {
+        return disponibilità_utente;
+    }
+
+    public void setDisponibilità_utente(Disponibilità_utente disponibilità_utente) {
+        this.disponibilità_utente = disponibilità_utente;
     }
 
     @Override

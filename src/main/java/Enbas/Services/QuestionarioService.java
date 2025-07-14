@@ -22,6 +22,7 @@ import Entity.Digicomp;
 import Entity.ModelloPredefinito;
 import Entity.Questionario;
 import Entity.Utente;
+import Enum.Disponibilità_utente;
 import Utils.JPAUtil;
 import Utils.Utils;
 import com.itextpdf.text.BadElementException;
@@ -127,27 +128,28 @@ public class QuestionarioService {
                 Utente utente = em.find(Utente.class, userId);
 
                 if (utente != null) {
-                    Questionario ultimo_questionario = jPAUtil.findUtenteQuestionarioIdByUserId(userId);
-                    if (ultimo_questionario != null && ultimo_questionario.getDescrizione().equals(Stato_questionario.COMPLETATO)
-                            && ultimo_questionario.getStatus() == 3 || ultimo_questionario == null) {
+                    if (utente.getDisponibilità_utente().equals(Disponibilità_utente.DISPONIBILE)) {
+                        Questionario ultimo_questionario = jPAUtil.findUtenteQuestionarioIdByUserId(userId);
+                        if (ultimo_questionario != null && ultimo_questionario.getDescrizione().equals(Stato_questionario.COMPLETATO)
+                                && ultimo_questionario.getStatus() == 3 || ultimo_questionario == null) {
 
-                        Questionario questionario = new Questionario();
-                        questionario.setUtenti(List.of(utente));
-                        questionario.setDigicomp_questionario(List.of(digicomp));
-                        questionario.setStatus(0);
-                        questionario.setDescrizione(Stato_questionario.ASSEGNATO);
+                            Questionario questionario = new Questionario();
+                            questionario.setUtenti(List.of(utente));
+                            questionario.setDigicomp_questionario(List.of(digicomp));
+                            questionario.setStatus(0);
+                            questionario.setDescrizione(Stato_questionario.ASSEGNATO);
+                            utente.setDisponibilità_utente(Disponibilità_utente.NON_DISPONIBILE);
 
-                        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-                        Date date = new Date();
-                        String formattedDate = sdf.format(date);
-                        questionario.setDataDiAssegnazione(formattedDate);
-                        questionario.setDomande(domandeSelezionate);
+                            Date date = new Date();
+                            String formattedDate = sdf.format(date);
+                            questionario.setDataDiAssegnazione(formattedDate);
+                            questionario.setDomande(domandeSelezionate);
 
-                        em.persist(questionario);
+                            em.persist(questionario);
 
+                        }
                     }
                 }
-
             }
 
             em.getTransaction().commit();
@@ -464,42 +466,54 @@ public class QuestionarioService {
                 List<String> risposteUtente = new ArrayList<>();
                 List<String> risposteGiuste = new ArrayList<>();
 
+                boolean rispostaData = false;
+
                 if (risposta.has("risposta")) {
-                    String rispostaTesto = risposta.getString("risposta");
-                    String rispostaCorretta = risposta.getString("risposta corretta");
-                    risposteUtente.add(rispostaTesto);
-                    risposteGiuste.add(rispostaCorretta);
-                    corretta = rispostaTesto.equals(rispostaCorretta);
+                    String rispostaTesto = risposta.optString("risposta", "").trim();
+                    String rispostaCorretta = risposta.optString("risposta corretta", "").trim();
+
+                    if (!rispostaTesto.isEmpty()) {
+                        rispostaData = true;
+                        risposteUtente.add(rispostaTesto);
+                        risposteGiuste.add(rispostaCorretta);
+                        corretta = rispostaTesto.equals(rispostaCorretta);
+                    }
                 } else if (risposta.has("risposta_id") && risposta.has("risposte_corrette")) {
-                    JSONArray idDate = risposta.getJSONArray("risposta_id");
-                    JSONArray idCorrette = risposta.getJSONArray("risposte_corrette");
+                    JSONArray idDate = risposta.optJSONArray("risposta_id");
+                    JSONArray idCorrette = risposta.optJSONArray("risposte_corrette");
 
-                    JSONArray testoDate = risposta.optJSONArray("risposta_testuale");
-                    JSONArray testiCorrette = risposta.optJSONArray("testi_risposte_corrette");
+                    if (idDate != null && idDate.length() > 0) {
+                        rispostaData = true;
 
-                    Set<String> idDateSet = new HashSet<>();
-                    for (int i = 0; i < idDate.length(); i++) {
-                        idDateSet.add(idDate.getString(i));
-                        if (testoDate != null && testoDate.length() > i) {
-                            risposteUtente.add(testoDate.getString(i));
+                        JSONArray testoDate = risposta.optJSONArray("risposta_testuale");
+                        JSONArray testiCorrette = risposta.optJSONArray("testi_risposte_corrette");
+
+                        Set<String> idDateSet = new HashSet<>();
+                        for (int i = 0; i < idDate.length(); i++) {
+                            idDateSet.add(idDate.getString(i));
+                            if (testoDate != null && testoDate.length() > i) {
+                                risposteUtente.add(testoDate.getString(i));
+                            }
                         }
-                    }
 
-                    for (int i = 0; testiCorrette != null && i < testiCorrette.length(); i++) {
-                        risposteGiuste.add(testiCorrette.getString(i));
-                    }
+                        for (int i = 0; testiCorrette != null && i < testiCorrette.length(); i++) {
+                            risposteGiuste.add(testiCorrette.getString(i));
+                        }
 
-                    Set<String> idCorretteSet = new HashSet<>();
-                    for (int i = 0; i < idCorrette.length(); i++) {
-                        idCorretteSet.add(idCorrette.getString(i));
-                    }
+                        Set<String> idCorretteSet = new HashSet<>();
+                        for (int i = 0; i < idCorrette.length(); i++) {
+                            idCorretteSet.add(idCorrette.getString(i));
+                        }
 
-                    corretta = idDateSet.equals(idCorretteSet);
+                        corretta = idDateSet.equals(idCorretteSet);
+                    }
                 }
 
-                risposteDate++;
-                if (corretta) {
-                    risposteCorrette++;
+                if (rispostaData) {
+                    risposteDate++;
+                    if (corretta) {
+                        risposteCorrette++;
+                    }
                 }
 
                 document.add(new Paragraph("\n"));

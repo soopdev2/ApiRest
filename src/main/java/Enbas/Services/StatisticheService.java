@@ -105,6 +105,7 @@ public class StatisticheService {
 
                 if (livelloCorrente >= 5) {
                     logger.info("L'utente con ID " + utente.getId() + " ha già completato il livello massimo.");
+                    jpaUtil.resettaDisponibilitàUtente(utente.getId(),LOGGER);
                     continue;
                 }
 
@@ -197,6 +198,7 @@ public class StatisticheService {
                     jpaUtil.assegnaNuovoQuestionario(ultimoQuestionario, livelloCorrente);
                     logger.info("L'utente con ID " + utente.getId() + " ha completato il questionario con successo.");
                 } else {
+                    jpaUtil.resettaDisponibilitàUtente(utente.getId(),LOGGER);
                     logger.info("Il questionario con ID " + ultimoQuestionario.getId() + " per l'utente " + utente.getId() + " non ha superato il livello.");
                     for (String errore : domandeSbagliate) {
                         logger.info(errore);

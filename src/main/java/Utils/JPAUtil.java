@@ -10,6 +10,7 @@ import Entity.Competenza;
 import Entity.Digicomp;
 import Entity.DigicompDomanda;
 import Entity.Domanda;
+import Entity.InfoTrack;
 import Entity.ModelloPredefinito;
 import Entity.Pagina;
 import Entity.Questionario;
@@ -17,6 +18,7 @@ import Entity.Ruolo;
 import Entity.SottoCategoria;
 import Entity.Utente;
 import Enum.Assegnabile_enum;
+import Enum.Disponibilità_utente;
 import Enum.Si_no;
 import Enum.Stato_questionario;
 import Enum.Stato_utente;
@@ -1798,6 +1800,61 @@ public class JPAUtil {
                 em.close();
             }
         }
+    }
+
+    public void resettaDisponibilitàUtente(Long userId, Logger logger) {
+        JPAUtil jPAUtil = new JPAUtil();
+        EntityManager em = jPAUtil.getEm();
+
+        try {
+            Utente vecchioUtente = em.find(Utente.class, userId);
+            if (vecchioUtente == null) {
+                logger.error("Utenza con id " + userId + " non trovata.");
+                return;
+            }
+
+            em.getTransaction().begin();
+
+            if (vecchioUtente.getDisponibilità_utente().equals(Disponibilità_utente.NON_DISPONIBILE)) {
+                vecchioUtente.setDisponibilità_utente(Disponibilità_utente.DISPONIBILE);
+            }
+            em.merge(vecchioUtente);
+            em.getTransaction().commit();
+
+            logger.info("Utenza aggiornata con successo! id: " + userId);
+        } catch (Exception e) {
+            logger.error("Errore nell'aggiornamento dell'utenza con id " + userId + "\n" + Utils.estraiEccezione(e));
+            if (em != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null) {
+                em.close();
+            }
+        }
+    }
+
+    public void SalvaInfoTrack(InfoTrack infoTrack, Logger logger) {
+        JPAUtil jPAUtil = new JPAUtil();
+        EntityManager em = jPAUtil.getEm();
+        try {
+            if (infoTrack != null) {
+                em.getTransaction().begin();
+                em.persist(infoTrack);
+                em.getTransaction().commit();
+                logger.info("InfoTrack creato con successo! id: " + infoTrack.getId());
+            }
+        } catch (Exception e) {
+            logger.error("Non è stato possibile creare un nuovo InfoTrack" + "\n" + Utils.estraiEccezione(e));
+            if (em != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null) {
+                em.close();
+            }
+        }
+
     }
 
 }

@@ -14,6 +14,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import static org.apache.commons.lang.exception.ExceptionUtils.getStackTrace;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -368,6 +369,22 @@ public class Utils {
         }
         input = input.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
         input = input.replaceAll("[\r\n]", "");
-        return StringEscapeUtils.escapeHtml(input);
+        return StringEscapeUtils.escapeHtml4(input);
+    }
+
+    public static List<String> cleanHtmlFromList(List<String> lista) {
+        List<String> pulita = new ArrayList<>();
+        for (String s : lista) {
+            String cleaned = s.replaceAll("<[^>]*>", "").trim();
+            cleaned = StringEscapeUtils.unescapeHtml4(cleaned);
+            pulita.add(cleaned);
+        }
+        return pulita;
+
+    }
+
+    public static String formatLocalDateTime(LocalDateTime localDateTime) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        return dtf.format(localDateTime);
     }
 }

@@ -11,6 +11,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 import Entity.Domanda;
+import Entity.InfoTrack;
 import Entity.Utente;
 import Enum.Tipo_inserimento;
 import Services.Filter.Secured;
@@ -24,6 +25,7 @@ import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 public class DomandaController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DomandaController.class.getName());
+    JPAUtil jpaUtil = new JPAUtil();
 
     @POST
     @Path("/findById")
@@ -46,11 +49,18 @@ public class DomandaController {
     @Produces(MediaType.APPLICATION_JSON)
     public Response findById(@FormParam("userId") Long userId, @FormParam("domanda_id") Long id, @HeaderParam("Authorization") String authorizationHeader) {
         try {
-            JPAUtil jpaUtil = new JPAUtil();
             Utente utente = jpaUtil.findUserByUserId(userId.toString());
             if (utente.getRuolo().getId() == 1) {
                 Domanda domanda = jpaUtil.findDomandaById(id);
                 if (domanda == null) {
+                    InfoTrack infoTrack = new InfoTrack("READ",
+                            "Domanda controller - API - (/findById)",
+                            404,
+                            "Errore - Domanda con id " + id + "non trovata.",
+                            "API chiamata dall'utente con id " + userId + ".",
+                            "Errore 404 - NOT_FOUND",
+                            Utils.formatLocalDateTime(LocalDateTime.now()));
+                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
                     return Response.status(Response.Status.NOT_FOUND)
                             .entity("{\"error\":\"Domanda non trovata\"}")
                             .build();
@@ -106,13 +116,40 @@ public class DomandaController {
                             + domanda.getCompetenza().getLivello());
                 }
 
+                InfoTrack infoTrack = new InfoTrack("READ",
+                        "Domanda controller - API - (/findById)",
+                        200,
+                        "Domanda con id " + domanda.getId() + " trovata.",
+                        "API chiamata dall'utente con id " + utente.getId() + ".",
+                        null,
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
                 return Response.ok(json.toString()).build();
             } else {
+                InfoTrack infoTrack = new InfoTrack("READ",
+                        "Domanda controller - API - (/findById)",
+                        401,
+                        "Ruolo con autorizzato.",
+                        "API chiamata dall'utente con id " + userId + ".",
+                        "L'utente che ha effettuato la chiamata non dispone dell'autorizzazione necessaria per effettuarla.",
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                 return Response.status(Response.Status.UNAUTHORIZED).entity("{\"error\": \"Ruolo non autorizzato.\"}").build();
             }
 
         } catch (Exception e) {
             LOGGER.error("Errore nella ricerca della domanda con id " + id, e);
+            InfoTrack infoTrack = new InfoTrack("READ",
+                    "Domanda controller - API - (/findById)",
+                    500,
+                    "Errore - Domanda con id " + id + " non trovata.",
+                    "API chiamata dall'utente con id " + userId + ".",
+                    Utils.estraiEccezione(e),
+                    Utils.formatLocalDateTime(LocalDateTime.now()));
+            jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
             return Response.serverError().entity("{\"error\": \"Errore interno\"}").build();
         }
     }
@@ -133,23 +170,55 @@ public class DomandaController {
             @FormParam("corretta") List<String> si_no_select,
             @HeaderParam("Authorization") String authorizationHeader
     ) {
-        JPAUtil jpaUtil = new JPAUtil();
-        Utente utente = jpaUtil.findUserByUserId(userId.toString());
-        if (utente.getRuolo().getId() == 1) {
-            Long areaId = Utils.tryParseLong(area_id_param);
-            Categoria categoria = jpaUtil.findCategoriaById(areaId);
 
-            Long abilità_competenza_id = Utils.tryParseLong(abilità_competenza_param);
-            Competenza competenza = jpaUtil.findCompetenzaById(abilità_competenza_id);
+        try {
+            Utente utente = jpaUtil.findUserByUserId(userId.toString());
+            if (utente.getRuolo().getId() == 1) {
+                Long areaId = Utils.tryParseLong(area_id_param);
+                Categoria categoria = jpaUtil.findCategoriaById(areaId);
 
-            jpaUtil.creaDomanda(categoria, competenza, stato, titolo, nome_domanda,
-                    risposta_text.toArray(new String[0]),
-                    si_no_select.toArray(new String[0]),
-                    LOGGER);
+                Long abilità_competenza_id = Utils.tryParseLong(abilità_competenza_param);
+                Competenza competenza = jpaUtil.findCompetenzaById(abilità_competenza_id);
 
-            return Response.ok().entity("{\"status\":\"domanda creata con successo.\"}").build();
-        } else {
-            return Response.status(Response.Status.UNAUTHORIZED).entity("{\"error\": \"Ruolo non autorizzato.\"}").build();
+                jpaUtil.creaDomanda(categoria, competenza, stato, titolo, nome_domanda,
+                        risposta_text.toArray(new String[0]),
+                        si_no_select.toArray(new String[0]),
+                        LOGGER);
+
+                InfoTrack infoTrack = new InfoTrack("CREATE",
+                        "Domanda controller - API - (/create)",
+                        200,
+                        "Nuova domanda creata con successo.",
+                        "API chiamata dall'utente con id " + utente.getId() + ".",
+                        null,
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
+                return Response.ok().entity("{\"status\":\"domanda creata con successo.\"}").build();
+            } else {
+                InfoTrack infoTrack = new InfoTrack("CREATE",
+                        "Domanda controller - API - (/create)",
+                        401,
+                        "Ruolo con autorizzato.",
+                        "API chiamata dall'utente con id " + userId + ".",
+                        "L'utente che ha effettuato la chiamata non dispone dell'autorizzazione necessaria per effettuarla.",
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                return Response.status(Response.Status.UNAUTHORIZED).entity("{\"error\": \"Ruolo non autorizzato.\"}").build();
+            }
+        } catch (Exception e) {
+            LOGGER.error("Errore nella creazione della domanda " + e);
+            InfoTrack infoTrack = new InfoTrack("CREATE",
+                    "Domanda controller - API - (/create)",
+                    500,
+                    "Errore - Nuova domanda " + "non creata.",
+                    "API chiamata dall'utente con id " + userId + ".",
+                    Utils.estraiEccezione(e),
+                    Utils.formatLocalDateTime(LocalDateTime.now()));
+            jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
+            return Response.serverError().entity("{\"error\": \"Errore interno\"}").build();
         }
     }
 
@@ -171,7 +240,7 @@ public class DomandaController {
             @FormParam("id_risposta") List<String> idRisposte,
             @HeaderParam("Authorization") String authorizationHeader
     ) {
-        JPAUtil jpaUtil = new JPAUtil();
+
         Utente utente = jpaUtil.findUserByUserId(userId.toString());
         if (utente.getRuolo().getId() == 1) {
 
@@ -196,10 +265,30 @@ public class DomandaController {
                         LOGGER
                 );
 
+                InfoTrack infoTrack = new InfoTrack("UPDATE",
+                        "Domanda controller - API - (/update)",
+                        200,
+                        "Domanda con id " + domanda_id + " aggiornata con successo.",
+                        "API chiamata dall'utente con id " + utente.getId() + ".",
+                        null,
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                 return Response.ok("{\"status\":\"domanda aggiornata con successo.\"}").build();
 
             } catch (Exception e) {
                 LOGGER.error("Errore durante l'aggiornamento della domanda", e);
+
+                InfoTrack infoTrack = new InfoTrack("UPDATE",
+                        "Domanda controller - API - (/update)",
+                        500,
+                        "Errore - Domanda con id " + domanda_id_param + "non aggiornata.",
+                        "API chiamata dall'utente con id " + userId + ".",
+                        Utils.estraiEccezione(e),
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity("{\"error\":\"Errore interno\"}")
                         .build();
@@ -217,13 +306,21 @@ public class DomandaController {
     @Produces(MediaType.APPLICATION_JSON)
     public Response delete(@FormParam("userId") Long userId, @FormParam("domanda_id") Long domanda_id, @HeaderParam("Authorization") String authorizationHeader
     ) {
-        JPAUtil jpaUtil = new JPAUtil();
         Utente utente = jpaUtil.findUserByUserId(userId.toString());
         if (utente.getRuolo().getId() == 1) {
             try {
 
                 Domanda domanda = jpaUtil.findDomandaById(domanda_id);
                 if (domanda == null) {
+                    InfoTrack infoTrack = new InfoTrack("DELETE",
+                            "Domanda controller - API - (/delete)",
+                            404,
+                            "Errore - Domanda con id " + domanda_id + "non trovata.",
+                            "API chiamata dall'utente con id " + userId + ".",
+                            "Errore 404 - NOT_FOUND",
+                            Utils.formatLocalDateTime(LocalDateTime.now()));
+                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                     return Response.status(Response.Status.NOT_FOUND)
                             .entity("{\"error\":\"Domanda non trovata\"}")
                             .build();
@@ -231,8 +328,26 @@ public class DomandaController {
 
                 boolean deleted = jpaUtil.deleteDomandaById(domanda_id);
                 if (deleted) {
+                    InfoTrack infoTrack = new InfoTrack("DELETE",
+                            "Domanda controller - API - (/delete)",
+                            200,
+                            "Domanda con id " + domanda_id + " eliminata con successo.",
+                            "API chiamata dall'utente con id " + utente.getId() + ".",
+                            null,
+                            Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
                     return Response.ok("{\"status\":\"Domanda eliminata con successo\"}").build();
                 } else {
+                    InfoTrack infoTrack = new InfoTrack("DELETE",
+                            "Domanda controller - API - (/delete)",
+                            500,
+                            "Errore - Domanda con id " + domanda_id + "non eliminata.",
+                            "API chiamata dall'utente con id " + userId + ".",
+                            "Errore durante l'eliminazione della domanda",
+                            Utils.formatLocalDateTime(LocalDateTime.now()));
+                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                     return Response.serverError()
                             .entity("{\"error\":\"Errore durante l'eliminazione della domanda\"}")
                             .build();
@@ -240,6 +355,15 @@ public class DomandaController {
 
             } catch (Exception e) {
                 LOGGER.error("Errore interno durante l'eliminazione della domanda", e.getMessage());
+                InfoTrack infoTrack = new InfoTrack("DELETE",
+                        "Domanda controller - API - (/delete)",
+                        500,
+                        "Errore - Domanda con id " + domanda_id + "non eliminata.",
+                        "API chiamata dall'utente con id " + userId + ".",
+                        Utils.estraiEccezione(e),
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                 return Response.serverError()
                         .entity("{\"error\":\"Errore interno durante l'eliminazione della domanda\"}")
                         .build();

@@ -1,7 +1,9 @@
 package Services.logic;
 
+import Entity.InfoTrack;
 import Entity.Utente;
 import Utils.JPAUtil;
+import Utils.Utils;
 import static Utils.Utils.calcolaScadenza;
 import static Utils.Utils.config;
 import io.jsonwebtoken.Claims;
@@ -22,7 +24,6 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.Path;
-import java.io.InputStream;
 import java.security.Key;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -31,12 +32,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.Date;
 import java.util.MissingResourceException;
-import java.util.Properties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/oauth2")
 public class AuthenticationService {
 
     public static final String CLIENT_SECRET = config.getString("CLIENT_SECRET");
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthenticationService.class.getName());
+    JPAUtil jpaUtil = new JPAUtil();
 
     @POST
     @Path("/token")
@@ -48,6 +52,15 @@ public class AuthenticationService {
             @FormParam("client_secret") String clientSecret) {
 
         if (!"client_credentials".equals(grantType)) {
+            InfoTrack infoTrack = new InfoTrack("CREATE",
+                    "Authentication service - API - (/token)",
+                    400,
+                    "Errore - generazione token non effettuata.",
+                    "API chiamata dall'utenza con clientId " + clientId + ".",
+                    "Errore 400 - BAD_REQUEST - Grant type diverso da client_credentials.",
+                    Utils.formatLocalDateTime(LocalDateTime.now()));
+            jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
             return Response.status(Response.Status.BAD_REQUEST).entity("Invalid grant_type" + " " + grantType).build();
         }
 
@@ -61,12 +74,38 @@ public class AuthenticationService {
                 //String jsonResponse = "{\"access_token\":\"" + accessToken + "\", \"expiration_date\":\"" + formatInstant(expirationInstant) + "\", \"refresh_token\":\"" + refreshToken + "\", \"refresh_token_expiration_date\":\"" + formatInstant(expirationInstant2) + "\"}";
                 String jsonResponseSenzaRefresh = "{\"access_token\":\"" + accessToken + "\", \"expiration_date\":\"" + formatInstant(expirationInstant) + "\"}";
 
+                InfoTrack infoTrack = new InfoTrack("CREATE",
+                        "Authentication service - API - (/token)",
+                        200,
+                        "Token generato con successo.",
+                        "API chiamata dall'utenza con clienId " + clientId + ".",
+                        null,
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
                 return Response.ok().entity(jsonResponseSenzaRefresh).type(MediaType.APPLICATION_JSON).build();
             } catch (Exception e) {
-                e.printStackTrace();
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error during token generation").build();
+
+                InfoTrack infoTrack = new InfoTrack("CREATE",
+                        "Authentication service - API - (/token)",
+                        500,
+                        "Errore - Token non generato.",
+                        "API chiamata dall'utenza con clientId " + clientId + ".",
+                        Utils.estraiEccezione(e),
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Errore durante la generazione del token").build();
             }
         } else {
+            InfoTrack infoTrack = new InfoTrack("CREATE",
+                    "Authentication service - API - (/token)",
+                    401,
+                    "Credenziali errate o utenza non autorizzata.",
+                    "API chiamata dall'utenza con clientId " + clientId + ".",
+                    "L'utenza che ha effettuato la chiamata non dispone dell'autorizzazione necessaria per effettuarla oppure credenziali errate.",
+                    Utils.formatLocalDateTime(LocalDateTime.now()));
+            jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
     }
