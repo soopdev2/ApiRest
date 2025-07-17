@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package Enbas.Controllers;
+package SkillProof.Controllers;
 
 import Entity.Categoria;
 import Entity.Competenza;
@@ -79,6 +79,9 @@ public class DomandaController {
                 }
                 if (domanda.getDescrizione() != null) {
                     json.addProperty("descrizione", domanda.getDescrizione());
+                }
+                if (domanda.getVisibilità_domanda() != null) {
+                    json.addProperty("descrizione", domanda.getVisibilità_domanda().toString().toLowerCase());
                 }
                 if (domanda.getOpzioni() == null && domanda.getTipo_inserimento().equals(Tipo_inserimento.AUTOMATICO)) {
                     String risposteJson = domanda.getRisposte();

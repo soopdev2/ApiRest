@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package Enbas.Services;
+package SkillProof.Services;
 
 import Entity.AreeCompetenze;
 import Entity.Domanda;
@@ -432,10 +432,6 @@ public class QuestionarioService {
             JPAUtil jpaUtil = new JPAUtil();
             Questionario questionario = jpaUtil.findUtenteQuestionarioByUtenteQuestionarioId(idQuestionario);
             Utente utente = jpaUtil.findUserByUtenteQuestionario(idQuestionario);
-
-            if (questionario == null || utente == null) {
-                throw new IllegalArgumentException("Questionario o utente non trovato");
-            }
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             Document document = new Document();

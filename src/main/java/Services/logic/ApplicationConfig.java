@@ -28,11 +28,11 @@ public class ApplicationConfig extends Application {
      * Automatically generated, do not modify.
      */
     private void addRestResourceClasses(Set<Class<?>> resources) {
-        resources.add(Enbas.Controllers.DomandaController.class);
-        resources.add(Enbas.Controllers.QuestionarioController.class);
-        resources.add(Enbas.Controllers.StatisticheController.class);
-        resources.add(Enbas.Controllers.UtenteController.class);
         resources.add(Services.Filter.JWTAuthenticationFilter.class);
         resources.add(Services.logic.AuthenticationService.class);
+        resources.add(SkillProof.Controllers.DomandaController.class);
+        resources.add(SkillProof.Controllers.QuestionarioController.class);
+        resources.add(SkillProof.Controllers.StatisticheController.class);
+        resources.add(SkillProof.Controllers.UtenteController.class);
     }
 }

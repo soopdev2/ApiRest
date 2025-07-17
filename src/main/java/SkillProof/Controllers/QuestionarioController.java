@@ -2,10 +2,10 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package Enbas.Controllers;
+package SkillProof.Controllers;
 
 import Entity.Utente;
-import Enbas.Services.QuestionarioService;
+import SkillProof.Services.QuestionarioService;
 import Entity.InfoTrack;
 import Entity.Questionario;
 import Enum.Stato_questionario;
@@ -139,32 +139,50 @@ public class QuestionarioController {
         Utente utente_ = jpaUtil.findUserByUserId(userId.toString());
         if (utente_.getRuolo().getId() == 2) {
             if (utente_.getId().equals(selectedUserId)) {
-                try {
-                    questionarioService.SalvaStatoQuestionarioPresoInCarico(selectedUserId, LOGGER);
-                    InfoTrack infoTrack = new InfoTrack("CREATE",
-                            "Questionario controller - API - (/inizia)",
-                            200,
-                            "Questionario iniziato con successo per il seguente utente con id : " + selectedUserId,
-                            "API chiamata dall'utente con id " + utente_.getId() + ".",
-                            null,
-                            Utils.formatLocalDateTime(LocalDateTime.now()));
+                Questionario questionario = jpaUtil.findUtenteQuestionarioIdByUserId(selectedUserId);
+                if (questionario != null) {
+                    try {
+                        questionarioService.SalvaStatoQuestionarioPresoInCarico(selectedUserId, LOGGER);
+                        InfoTrack infoTrack = new InfoTrack("CREATE",
+                                "Questionario controller - API - (/inizia)",
+                                200,
+                                "Questionario iniziato con successo per il seguente utente con id : " + selectedUserId,
+                                "API chiamata dall'utente con id " + utente_.getId() + ".",
+                                null,
+                                Utils.formatLocalDateTime(LocalDateTime.now()));
 
-                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
-                    return Response.ok("{\"status\":\"Questionario iniziato con successo.\"}").build();
-                } catch (IOException e) {
-                    LOGGER.error("Errore durante l'inizio del questionario: " + e.getMessage());
+                        jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                        return Response.ok("{\"status\":\"Questionario iniziato con successo.\"}").build();
+                    } catch (IOException e) {
+                        LOGGER.error("Errore durante l'inizio del questionario: " + e.getMessage());
+                        InfoTrack infoTrack = new InfoTrack("CREATE",
+                                "Questionario controller - API - (/inizia)",
+                                500,
+                                "Errore - Questionario non iniziato dall'utente con id " + selectedUserId + ".",
+                                "API chiamata dall'utente con id " + userId + ".",
+                                Utils.estraiEccezione(e),
+                                Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                        jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity("{\"error\":\"Errore durante l'inizio del questionario\"}")
+                                .build();
+                    }
+                } else {
+                    LOGGER.error("Errore durante l'inizio del questionario.");
                     InfoTrack infoTrack = new InfoTrack("CREATE",
                             "Questionario controller - API - (/inizia)",
-                            500,
-                            "Errore - Questionario non iniziato dall'utente con id " + selectedUserId + ".",
+                            404,
+                            "Errore - Questionario" + " non iniziato dall'utente con id " + selectedUserId + ".",
                             "API chiamata dall'utente con id " + userId + ".",
-                            Utils.estraiEccezione(e),
+                            "Errore - 404 - NOT_FOUND",
                             Utils.formatLocalDateTime(LocalDateTime.now()));
 
                     jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
 
-                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                            .entity("{\"error\":\"Errore durante l'inizio del questionario\"}")
+                    return Response.status(Response.Status.NOT_FOUND)
+                            .entity("{\"error\":\"Questionario non trovato o vuoto.\"}")
                             .build();
                 }
             } else {
@@ -209,36 +227,63 @@ public class QuestionarioController {
         Utente utente_ = jpaUtil.findUserByUserId(userId.toString());
         if (utente_.getRuolo().getId() == 2) {
             if (utente_.getId().equals(selectedUserId)) {
-                try {
-                    questionarioService.salvaQuestionario(selectedUserId, questionarioId, jsonInput, LOGGER);
-                    InfoTrack infoTrack = new InfoTrack("CREATE",
-                            "Questionario controller - API - (/salvaQuestionario)",
-                            200,
-                            "Questionario con id " + questionarioId + " salvato con successo per il seguente utente con id : " + selectedUserId,
-                            "API chiamata dall'utente con id " + utente_.getId() + ".",
-                            null,
-                            Utils.formatLocalDateTime(LocalDateTime.now()));
+                Questionario questionario = jpaUtil.findUtenteQuestionarioIdByUserId(selectedUserId);
+                if (questionario != null) {
+                    try {
+                        questionarioService.salvaQuestionario(selectedUserId, questionarioId, jsonInput, LOGGER);
+                        InfoTrack infoTrack = new InfoTrack("CREATE",
+                                "Questionario controller - API - (/salvaQuestionario)",
+                                200,
+                                "Questionario con id " + questionarioId + " salvato con successo per il seguente utente con id : " + selectedUserId,
+                                "API chiamata dall'utente con id " + utente_.getId() + ".",
+                                null,
+                                Utils.formatLocalDateTime(LocalDateTime.now()));
 
-                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
-                    LOGGER.info("Questionario salvato con successo.");
-                    return Response.ok("{\"status\":\"Questionario salvato con successo.\"}").build();
-                } catch (IOException e) {
-                    LOGGER.error("Errore durante il salvataggio del questionario: " + e.getMessage());
+                        jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                        LOGGER.info("Questionario salvato con successo.");
+                        return Response.ok("{\"status\":\"Questionario salvato con successo.\"}").build();
+
+                    } catch (IOException e) {
+                        LOGGER.error("Errore durante il salvataggio del questionario: " + e.getMessage());
+                        InfoTrack infoTrack = new InfoTrack("CREATE",
+                                "Questionario controller - API - (/salvaQuestionario)",
+                                500,
+                                "Errore - Questionario con id " + questionarioId + " non salvato dall'utente con id " + selectedUserId + ".",
+                                "API chiamata dall'utente con id " + userId + ".",
+                                Utils.estraiEccezione(e),
+                                Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                        jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity("{\"error\":\"Errore durante il salvataggio del questionario\"}")
+                                .build();
+                    }
+                } else {
+                    LOGGER.error("Errore durante il salvataggio del questionario.");
                     InfoTrack infoTrack = new InfoTrack("CREATE",
                             "Questionario controller - API - (/salvaQuestionario)",
-                            500,
+                            404,
                             "Errore - Questionario con id " + questionarioId + " non salvato dall'utente con id " + selectedUserId + ".",
                             "API chiamata dall'utente con id " + userId + ".",
-                            Utils.estraiEccezione(e),
+                            "Errore - 404 - NOT_FOUND",
                             Utils.formatLocalDateTime(LocalDateTime.now()));
 
                     jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
 
-                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                            .entity("{\"error\":\"Errore durante il salvataggio del questionario\"}")
+                    return Response.status(Response.Status.NOT_FOUND)
+                            .entity("{\"error\":\"Questionario non trovato o vuoto.\"}")
                             .build();
                 }
             } else {
+                InfoTrack infoTrack = new InfoTrack("CREATE",
+                        "Questionario controller - API - (/salvaQuestionario)",
+                        401,
+                        "Ruolo con autorizzato.",
+                        "API chiamata dall'utente con id " + userId + ".",
+                        "L'utente che ha effettuato la chiamata non dispone dell'autorizzazione necessaria per effettuarla.",
+                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
                 return Response.status(Response.Status.UNAUTHORIZED).entity("{\"error\": \"Non puoi salvare il questionario di un altro utente\"}").build();
             }
         } else {
@@ -270,103 +315,119 @@ public class QuestionarioController {
 
         if (utente != null && utente.getRuolo().getId() == 2) {
             if (utente.getId().equals(selectedUserId)) {
-                try {
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    Map<String, Object> formData = objectMapper.readValue(jsonInput, Map.class);
+                Questionario questionario2 = jpaUtil.findUtenteQuestionarioIdByUserId(selectedUserId);
+                if (questionario2 != null) {
+                    try {
+                        ObjectMapper objectMapper = new ObjectMapper();
+                        Map<String, Object> formData = objectMapper.readValue(jsonInput, Map.class);
 
-                    Long userIdParsed = Utils.tryParseLong((String) formData.get("userId"));
+                        Long userIdParsed = Utils.tryParseLong((String) formData.get("userId"));
 
-                    if (userIdParsed != null) {
-                        Map<String, Object> progressData = new HashMap<>();
-                        progressData.put("userId", userIdParsed);
+                        if (userIdParsed != null) {
+                            Map<String, Object> progressData = new HashMap<>();
+                            progressData.put("userId", userIdParsed);
 
-                        formData.forEach((key, value) -> {
-                            if (!key.equals("userId")) {
-                                progressData.put(key, value);
+                            formData.forEach((key, value) -> {
+                                if (!key.equals("userId")) {
+                                    progressData.put(key, value);
+                                }
+                            });
+
+                            progressData.put("data_salvataggio", new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date()));
+
+                            String progressJson = objectMapper.writeValueAsString(progressData);
+
+                            EntityManager em = jpaUtil.getEm();
+                            try {
+                                em.getTransaction().begin();
+
+                                Utente u = em.find(Utente.class, userIdParsed);
+                                if (u != null) {
+                                    Questionario questionario = jpaUtil.findUtenteQuestionarioIdByUserId(u.getId());
+                                    questionario.setProgressi(progressJson);
+                                    jpaUtil.salvaStatoQuestionario(questionario);
+                                    em.merge(questionario);
+                                }
+
+                                em.getTransaction().commit();
+                                LOGGER.info("Progressi questionario salvati con successo dall'utente con id " + userIdParsed);
+                                InfoTrack infoTrack = new InfoTrack("CREATE",
+                                        "Questionario controller - API - (/salvaProgressi)",
+                                        200,
+                                        "Progressi questionario salvati con successo per il seguente utente con id : " + selectedUserId,
+                                        "API chiamata dall'utente con id " + userId + ".",
+                                        null,
+                                        Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                                return Response.ok("{\"status\":\"Progressi del questionario salvati con successo.\"}").build();
+
+                            } catch (Exception e) {
+                                if (em.getTransaction().isActive()) {
+                                    em.getTransaction().rollback();
+                                }
+                                LOGGER.error("Errore durante il salvataggio: " + Utils.estraiEccezione(e));
+
+                                InfoTrack infoTrack = new InfoTrack("CREATE",
+                                        "Questionario controller - API - (/salvaProgressi)",
+                                        500,
+                                        "Errore - Progressi questionario non salvati dall'utente con id " + selectedUserId + ".",
+                                        "API chiamata dall'utente con id " + userId + ".",
+                                        Utils.estraiEccezione(e),
+                                        Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                        .entity("{\"error\":\"Errore durante il salvataggio dei progressi.\"}")
+                                        .build();
+                            } finally {
+                                if (em.isOpen()) {
+                                    em.close();
+                                }
                             }
-                        });
 
-                        progressData.put("data_salvataggio", new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date()));
-
-                        String progressJson = objectMapper.writeValueAsString(progressData);
-
-                        EntityManager em = jpaUtil.getEm();
-                        try {
-                            em.getTransaction().begin();
-
-                            Utente u = em.find(Utente.class, userIdParsed);
-                            if (u != null) {
-                                Questionario questionario = jpaUtil.findUtenteQuestionarioIdByUserId(u.getId());
-                                questionario.setProgressi(progressJson);
-                                jpaUtil.salvaStatoQuestionario(questionario);
-                                em.merge(questionario);
-                            }
-
-                            em.getTransaction().commit();
-                            LOGGER.info("Progressi questionario salvati con successo dall'utente con id " + userIdParsed);
+                        } else {
                             InfoTrack infoTrack = new InfoTrack("CREATE",
                                     "Questionario controller - API - (/salvaProgressi)",
-                                    200,
-                                    "Progressi questionario salvati con successo per il seguente utente con id : " + selectedUserId,
-                                    "API chiamata dall'utente con id " + userId + ".",
-                                    null,
-                                    Utils.formatLocalDateTime(LocalDateTime.now()));
-
-                            jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
-                            return Response.ok("{\"status\":\"Progressi del questionario salvati con successo.\"}").build();
-
-                        } catch (Exception e) {
-                            if (em.getTransaction().isActive()) {
-                                em.getTransaction().rollback();
-                            }
-                            LOGGER.error("Errore durante il salvataggio: " + Utils.estraiEccezione(e));
-
-                            InfoTrack infoTrack = new InfoTrack("CREATE",
-                                    "Questionario controller - API - (/salvaProgressi)",
-                                    500,
+                                    400,
                                     "Errore - Progressi questionario non salvati dall'utente con id " + selectedUserId + ".",
                                     "API chiamata dall'utente con id " + userId + ".",
-                                    Utils.estraiEccezione(e),
+                                    "Error - 400 - BAD_REQUEST. userId mancante o non valido.",
                                     Utils.formatLocalDateTime(LocalDateTime.now()));
 
                             jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
-                            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                    .entity("{\"error\":\"Errore durante il salvataggio dei progressi.\"}")
+                            return Response.status(Response.Status.BAD_REQUEST)
+                                    .entity("{\"error\":\"userId mancante o non valido.\"}")
                                     .build();
-                        } finally {
-                            if (em.isOpen()) {
-                                em.close();
-                            }
                         }
-                    } else {
+
+                    } catch (IOException e) {
                         InfoTrack infoTrack = new InfoTrack("CREATE",
                                 "Questionario controller - API - (/salvaProgressi)",
                                 400,
                                 "Errore - Progressi questionario non salvati dall'utente con id " + selectedUserId + ".",
                                 "API chiamata dall'utente con id " + userId + ".",
-                                "Error - 400 - BAD_REQUEST. userId mancante o non valido.",
+                                "Error - 400 - BAD_REQUEST. Formato json non valido.",
                                 Utils.formatLocalDateTime(LocalDateTime.now()));
 
                         jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                        LOGGER.error("Errore parsing JSON: " + e.getMessage());
                         return Response.status(Response.Status.BAD_REQUEST)
-                                .entity("{\"error\":\"userId mancante o non valido.\"}")
+                                .entity("{\"error\":\"Formato JSON non valido.\"}")
                                 .build();
                     }
-
-                } catch (IOException e) {
+                } else {
+                    LOGGER.error("Questionario con non trovato.");
                     InfoTrack infoTrack = new InfoTrack("CREATE",
                             "Questionario controller - API - (/salvaProgressi)",
-                            400,
-                            "Errore - Progressi questionario non salvati dall'utente con id " + selectedUserId + ".",
+                            404,
+                            "Errore - I progressi del questionario dell'utente " + selectedUserId + " non sono stati salvati.",
                             "API chiamata dall'utente con id " + userId + ".",
-                            "Error - 400 - BAD_REQUEST. Formato json non valido.",
+                            "Error - 404 - NOT_FOUND. Questionario non trovato ",
                             Utils.formatLocalDateTime(LocalDateTime.now()));
 
                     jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
-                    LOGGER.error("Errore parsing JSON: " + e.getMessage());
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity("{\"error\":\"Formato JSON non valido.\"}")
-                            .build();
+                    return Response.status(Response.Status.NOT_FOUND).entity("Questionario non trovato").build();
                 }
             } else {
                 InfoTrack infoTrack = new InfoTrack("CREATE",
@@ -408,20 +469,35 @@ public class QuestionarioController {
         Utente utente_ = jpaUtil.findUserByUserId(userId.toString());
         if (utente_.getRuolo().getId() == 2 && utente_.getId().equals(selectedUserId) || utente_.getRuolo().getId() == 1) {
             try {
-                byte[] pdfBytes = questionarioService.generaPdfQuestionario(selectedUserId, id_questionario, LOGGER);
-                Utente selectedUser = jpaUtil.findUserByUserId(selectedUserId.toString());
-                InfoTrack infoTrack = new InfoTrack("READ,CREATE",
-                        "Questionario controller - API - (/visualizzaPdf)",
-                        200,
-                        "Il questionario con id " + id_questionario + " per il seguente utente con id : " + selectedUserId + " in formato PDF è stato generato con successo.",
-                        "API chiamata dall'utente con id " + userId + ".",
-                        null,
-                        Utils.formatLocalDateTime(LocalDateTime.now()));
+                Questionario questionario = jpaUtil.findUtenteQuestionarioByUtenteQuestionarioId(id_questionario);
+                if (questionario != null) {
+                    byte[] pdfBytes = questionarioService.generaPdfQuestionario(selectedUserId, id_questionario, LOGGER);
+                    Utente selectedUser = jpaUtil.findUserByUserId(selectedUserId.toString());
+                    InfoTrack infoTrack = new InfoTrack("READ,CREATE",
+                            "Questionario controller - API - (/visualizzaPdf)",
+                            200,
+                            "Il questionario con id " + id_questionario + " per il seguente utente con id : " + selectedUserId + " in formato PDF è stato generato con successo.",
+                            "API chiamata dall'utente con id " + userId + ".",
+                            null,
+                            Utils.formatLocalDateTime(LocalDateTime.now()));
 
-                jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
-                return Response.ok(pdfBytes, MediaType.APPLICATION_OCTET_STREAM)
-                        .header("Content-Disposition", "attachment; filename=\"questionario_" + Utils.sanitize(selectedUser.getNome().toUpperCase()) + "_" + Utils.sanitize(selectedUser.getCognome().toUpperCase()) + ".pdf\"")
-                        .build();
+                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                    return Response.ok(pdfBytes, MediaType.APPLICATION_OCTET_STREAM)
+                            .header("Content-Disposition", "attachment; filename=\"questionario_" + Utils.sanitize(selectedUser.getNome().toUpperCase()) + "_" + Utils.sanitize(selectedUser.getCognome().toUpperCase()) + ".pdf\"")
+                            .build();
+                } else {
+                    LOGGER.error("Questionario con id " + id_questionario + " non trovato: ");
+                    InfoTrack infoTrack = new InfoTrack("READ,CREATE",
+                            "Questionario controller - API - (/visualizzaPdf)",
+                            404,
+                            "Errore - il questionario con id " + id_questionario + " dell'utente " + selectedUserId + " non è stato generato.",
+                            "API chiamata dall'utente con id " + userId + ".",
+                            "Error - 404 - NOT_FOUND. Questionario non trovato ",
+                            Utils.formatLocalDateTime(LocalDateTime.now()));
+
+                    jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
+                    return Response.status(Response.Status.NOT_FOUND).entity("Questionario non trovato").build();
+                }
             } catch (IllegalArgumentException e) {
                 LOGGER.error("Questionario non trovato: " + e.getMessage());
                 InfoTrack infoTrack = new InfoTrack("READ,CREATE",
