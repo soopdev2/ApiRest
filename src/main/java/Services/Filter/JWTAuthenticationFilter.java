@@ -3,7 +3,9 @@ package Services.Filter;
 import Services.logic.AuthenticationService;
 import static Services.logic.AuthenticationService.CLIENT_SECRET;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;
@@ -15,6 +17,8 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 
 import java.lang.reflect.Method;
+import java.util.Base64;
+import javax.crypto.SecretKey;
 
 @Secured
 @Provider
@@ -38,17 +42,22 @@ public class JWTAuthenticationFilter implements ContainerRequestFilter {
                 return;
             }
 
-            String token = authHeader.substring("Bearer".length()).trim();
+            String potentialToken = authHeader.substring("Bearer ".length()).trim();
+
+            String token = potentialToken.split("\\s+")[0];
 
             try {
                 if (AuthenticationService.isValidToken(token)
                         && AuthenticationService.isAccessToken(token)) {
 
-                    Claims claims = Jwts.parser()
-                            .setSigningKey(CLIENT_SECRET.getBytes())
-                            .parseClaimsJws(token)
-                            .getBody();
+                    byte[] keyBytes = Base64.getDecoder().decode(CLIENT_SECRET);
+                    SecretKey key = Keys.hmacShaKeyFor(keyBytes);
 
+                    Claims claims = Jwts.parser()
+                            .verifyWith(key)
+                            .build()
+                            .parseSignedClaims(token)
+                            .getPayload();
                     String username = claims.getSubject();
 
                     requestContext.setProperty("username", username);
@@ -57,7 +66,7 @@ public class JWTAuthenticationFilter implements ContainerRequestFilter {
                     abort(requestContext, "Token non valido");
                 }
 
-            } catch (SignatureException | io.jsonwebtoken.ExpiredJwtException e) {
+            } catch (SignatureException | ExpiredJwtException e) {
                 abort(requestContext, "Token non valido o scaduto");
                 e.printStackTrace();
             } catch (Exception e) {

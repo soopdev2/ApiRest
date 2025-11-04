@@ -1,16 +1,16 @@
 package Services.logic;
 
 import Entity.InfoTrack;
-import Entity.Utente;
 import Utils.JPAUtil;
 import Utils.Utils;
 import static Utils.Utils.calcolaScadenza;
 import static Utils.Utils.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -19,19 +19,16 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.FormParam;
 import jakarta.ws.rs.Produces;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
-import jakarta.persistence.TypedQuery;
 import jakarta.ws.rs.Path;
-import java.security.Key;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.Date;
 import java.util.MissingResourceException;
+import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +65,7 @@ public class AuthenticationService {
             try {
                 String accessToken = generateToken(CLIENT_SECRET, "access_token");
                 //String refreshToken = generateRefreshToken(CLIENT_SECRET, "refresh_token");
-                Instant expirationInstant = getExpirationInstantFromToken(accessToken, clientSecret);
+                Instant expirationInstant = getExpirationInstantFromToken(accessToken, CLIENT_SECRET);
                 //Instant expirationInstant2 = getExpirationInstantFromToken(refreshToken, clientSecret);
 
                 //String jsonResponse = "{\"access_token\":\"" + accessToken + "\", \"expiration_date\":\"" + formatInstant(expirationInstant) + "\", \"refresh_token\":\"" + refreshToken + "\", \"refresh_token_expiration_date\":\"" + formatInstant(expirationInstant2) + "\"}";
@@ -237,58 +234,82 @@ public class AuthenticationService {
     public static String generateToken(String clientSecret, String tokenType) {
         String scadenza = config.getString("scadenza_token");
         LocalDateTime scadenza_token = calcolaScadenza(scadenza);
-        Key key = Keys.hmacShaKeyFor(clientSecret.getBytes());
+
+        byte[] keyBytes = Base64.getDecoder().decode(clientSecret);
+        SecretKey key = Keys.hmacShaKeyFor(keyBytes);
+
         Instant now = Instant.now();
         Instant scadenzaInstant = scadenza_token.atZone(ZoneId.systemDefault()).toInstant();
-        Date scadenza_token_date = Date.from(scadenzaInstant);
 
         String token = Jwts.builder()
-                .setId(UUID.randomUUID().toString())
-                .setIssuedAt(Date.from(now))
-                .setExpiration(scadenza_token_date)
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(scadenzaInstant))
                 .claim("token_type", tokenType)
-                .signWith(key, SignatureAlgorithm.HS256)
+                .signWith(key)
                 .compact();
 
         return token;
     }
 
     public static String generateRefreshToken(String clientSecret, String tokenType) {
-        Key key = Keys.hmacShaKeyFor(clientSecret.getBytes());
         String scadenza = config.getString("scadenza_refreshToken");
         LocalDateTime scadenza_refresh_token = calcolaScadenza(scadenza);
-        Instant scadenzaInstant = scadenza_refresh_token.atZone(ZoneId.systemDefault()).toInstant();
-        Date scadenza_refresh_token_date = Date.from(scadenzaInstant);
+
+        byte[] keyBytes = Base64.getDecoder().decode(clientSecret);
+        SecretKey key = Keys.hmacShaKeyFor(keyBytes);
+
         Instant now = Instant.now();
+        Instant scadenzaInstant = scadenza_refresh_token.atZone(ZoneId.systemDefault()).toInstant();
 
         String token = Jwts.builder()
-                .setId(UUID.randomUUID().toString())
-                .setIssuedAt(Date.from(now))
-                .setExpiration(scadenza_refresh_token_date)
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(scadenzaInstant))
                 .claim("token_type", tokenType)
-                .signWith(key, SignatureAlgorithm.HS256)
+                .signWith(key)
                 .compact();
 
         return token;
     }
 
     public String formatInstant(Instant instant) {
+        if (instant == null) {
+            return "Token is invalid or expired.";
+        }
         return DateTimeFormatter.ISO_DATE_TIME
                 .withZone(ZoneId.systemDefault())
                 .format(instant);
     }
 
+    private static JwtParser createParser(String clientSecret) {
+        byte[] keyBytes = Base64.getDecoder().decode(clientSecret);
+
+        SecretKey key = Keys.hmacShaKeyFor(keyBytes);
+
+        return Jwts.parser()
+                .verifyWith(key)
+                .build();
+    }
+
     public static Instant getExpirationInstantFromToken(String token, String clientSecret) {
         try {
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                    .setSigningKey(CLIENT_SECRET.getBytes())
-                    .build()
-                    .parseClaimsJws(token);
+            JwtParser parser = createParser(clientSecret);
 
-            Claims claims = claimsJws.getBody();
+            Jws<Claims> claimsJws = parser.parseSignedClaims(token);
+
+            Claims claims = claimsJws.getPayload();
             Date expirationDate = claims.getExpiration();
 
+            if (expirationDate == null) {
+                return null;
+            }
+
             return expirationDate.toInstant();
+        } catch (SignatureException e) {
+            System.err.println("Token signature is invalid or key is wrong.");
+            e.printStackTrace();
+            return null;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -297,17 +318,16 @@ public class AuthenticationService {
 
     public static boolean isValidToken(String token) {
         try {
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                    .setSigningKey(CLIENT_SECRET.getBytes())
-                    .build()
-                    .parseClaimsJws(token);
+            JwtParser parser = createParser(CLIENT_SECRET);
+            parser.parseSignedClaims(token);
 
-            Claims claims = claimsJws.getBody();
-
-            if (claims.getExpiration().before(new Date())) {
-                return false;
-            }
             return true;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            System.err.println("Token is expired.");
+            return false;
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            System.err.println("Token signature is invalid.");
+            return false;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -316,66 +336,69 @@ public class AuthenticationService {
 
     public static boolean isAccessToken(String token) {
         try {
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                    .setSigningKey(CLIENT_SECRET.getBytes())
-                    .build()
-                    .parseClaimsJws(token);
+            JwtParser parser = createParser(CLIENT_SECRET);
 
-            Claims claims = claimsJws.getBody();
+            Jws<Claims> claimsJws = parser.parseSignedClaims(token);
+
+            Claims claims = claimsJws.getPayload();
 
             return claims.containsKey("token_type") && "access_token".equals(claims.get("token_type"));
 
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            System.err.println("Token signature is invalid.");
+            return false;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
 
-    public static void saveRefreshTokenToDatabase(String clientId, String refreshToken) {
-        EntityManagerFactory entityManagerFactory = null;
-        EntityManager entityManager = null;
-
-        try {
-            entityManagerFactory = Persistence.createEntityManagerFactory("gestionale_questionario");
-            entityManager = entityManagerFactory.createEntityManager();
-
-            TypedQuery<Utente> query = entityManager.createQuery(
-                    "SELECT u FROM Utente u WHERE u.username = :username", Utente.class
-            )
-                    .setParameter("username", clientId);
-
-            Utente utente = query.getSingleResult();
-
-            if (utente != null) {
-                utente.setRefreshToken(refreshToken);
-                entityManager.getTransaction().begin();
-                entityManager.merge(utente);
-                entityManager.getTransaction().commit();
-            } else {
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (entityManager != null) {
-                entityManager.close();
-            }
-            if (entityManagerFactory != null) {
-                entityManagerFactory.close();
-            }
-        }
-    }
-
-    public static String Auth(String clientId) {
-        try {
-            String accessToken = generateToken(CLIENT_SECRET, "access_token");
-            String refreshToken = generateRefreshToken(CLIENT_SECRET, "refresh_token");
-            saveRefreshTokenToDatabase(clientId, refreshToken);
-            return accessToken;
-        } catch (Exception e) {
-            e.printStackTrace();
-            Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error during token generation").build();
-        }
-
-        return null;
-    }
+//    public static String Auth(String clientId) {
+//        try {
+//            String accessToken = generateToken(CLIENT_SECRET, "access_token");
+//            String refreshToken = generateRefreshToken(CLIENT_SECRET, "refresh_token");
+//            //saveRefreshTokenToDatabase(clientId, refreshToken);
+//            return accessToken;
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error during token generation").build();
+//        }
+//
+//        return null;
+//    }
 }
+
+//    public static void saveRefreshTokenToDatabase(String clientId, String refreshToken) {
+//        EntityManagerFactory entityManagerFactory = null;
+//        EntityManager entityManager = null;
+//
+//        try {
+//            entityManagerFactory = Persistence.createEntityManagerFactory("gestionale_questionario");
+//            entityManager = entityManagerFactory.createEntityManager();
+//
+//            TypedQuery<Utente> query = entityManager.createQuery(
+//                    "SELECT u FROM Utente u WHERE u.username = :username", Utente.class
+//            )
+//                    .setParameter("username", clientId);
+//
+//            Utente utente = query.getSingleResult();
+//
+//            if (utente != null) {
+//                utente.setRefreshToken(refreshToken);
+//                entityManager.getTransaction().begin();
+//                entityManager.merge(utente);
+//                entityManager.getTransaction().commit();
+//            } else {
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        } finally {
+//            if (entityManager != null) {
+//                entityManager.close();
+//            }
+//            if (entityManagerFactory != null) {
+//                entityManagerFactory.close();
+//            }
+//        }
+//    }
+

@@ -317,8 +317,14 @@ public class StatisticheController {
 
                 jpaUtil.SalvaInfoTrack(infoTrack, LOGGER);
 
-                return Response.status(Response.Status.OK)
-                        .entity("{\"status\": \"Controllo completato con successo\", \"details\": " + messaggi.toString() + "}")
+                Map<String, Object> responseMap = new HashMap<>();
+                responseMap.put("status", "Controllo completato con successo");
+                responseMap.put("details", messaggi);
+
+                String jsonResponse = objectMapper.writeValueAsString(responseMap);
+
+                return Response.ok(jsonResponse)
+                        .type(MediaType.APPLICATION_JSON)
                         .build();
 
             } catch (Exception e) {
