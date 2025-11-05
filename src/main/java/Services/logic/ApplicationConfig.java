@@ -28,6 +28,7 @@ public class ApplicationConfig extends Application {
      * Automatically generated, do not modify.
      */
     private void addRestResourceClasses(Set<Class<?>> resources) {
+        resources.add(Services.Filter.CorsFilter.class);
         resources.add(Services.Filter.JWTAuthenticationFilter.class);
         resources.add(Services.logic.AuthenticationService.class);
         resources.add(SkillProof.Controllers.DomandaController.class);

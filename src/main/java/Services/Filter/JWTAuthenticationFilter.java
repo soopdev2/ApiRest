@@ -43,7 +43,6 @@ public class JWTAuthenticationFilter implements ContainerRequestFilter {
             }
 
             String potentialToken = authHeader.substring("Bearer ".length()).trim();
-
             String token = potentialToken.split("\\s+")[0];
 
             try {
